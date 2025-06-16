@@ -1,19 +1,25 @@
 import requests
 import json
 
-header = {
-    "Content-Type": "application/json"
-}
+from listen.listen import Listen
+from influence.influence import Influence
+from speak.speak import Speak
 
-data = {
-    "messages": [
-        {
-            "role": "user",
-            "content": "Hello"
-        }
-    ]
-}
-response = requests.post(url='http://localhost:1234/v1/chat/completions', headers=header, json=data)
-response_json = json.loads(response.content)
-message_content = response_json['choices'][0]['message']['content']
-print(message_content)
+
+class Jarvis:
+    def __init__(self):
+        pass
+
+    def listener(self):
+        pass
+
+    def influencer(self):
+        pass
+
+    def speaker(self):
+        pass
+
+
+if __name__ == "__main__":
+    completion_text = chat_completion(text="你好，你是谁")
+    text_to_audio(completion_text)
