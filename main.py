@@ -10,8 +10,9 @@ class Jarvis:
     def __init__(self):
         pass
 
-    def listener(self):
-        pass
+    @staticmethod
+    def listener():
+        Listen.record()
 
     def influencer(self):
         pass
@@ -21,5 +22,7 @@ class Jarvis:
 
 
 if __name__ == "__main__":
-    completion_text = chat_completion(text="你好，你是谁")
-    text_to_audio(completion_text)
+    j = Jarvis()
+    j.listener()
+    # completion_text = chat_completion(text="你好，你是谁")
+    # text_to_audio(completion_text)
