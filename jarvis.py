@@ -15,14 +15,14 @@ def save_audio(audio):
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"recordings/recording_{timestamp}.wav"
+        filename = f"recordings/recording_{timestamp}.mp3" #waw
 
         # Save the audio file
         sample_rate, audio_data = audio
         sf.write(filename, audio_data, sample_rate)
 
-        # return f"Audio saved to {filename}"
-        return Influence.audio_to_text("./tests/yue.mp3")
+        print(f"Audio saved to {filename}")
+        return Influence.audio_to_text(filename) #"./tests/yue.mp3"
     except Exception as e:
         print(f"Error saving audio: {e}")
         return f"Error: {str(e)}"
@@ -34,9 +34,13 @@ def ui_launch():
             gr.Interface(
                 fn=save_audio,
                 inputs=gr.Audio(sources=["microphone"]),
-                outputs=gr.Textbox(label="Output"),
+                outputs=gr.Textbox(label="Me"),
                 title="Jarvis👾",
                 description=""
+            )
+        with gr.Row():
+            gr.Textbox(
+                label="Jarvis"
             )
     ui.launch()
 
