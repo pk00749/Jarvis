@@ -31,3 +31,4 @@ class Influence:
         )
         text = rich_transcription_postprocess(res[0]["text"])
         print(text)
+        return text
