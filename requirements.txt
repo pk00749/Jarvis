@@ -1,2 +1,8 @@
 pytest==8.3.4
 pydantic==2.10.6
+funasr==1.2.6
+torch<=2.3
+torchaudio
+modelscope
+huggingface
+huggingface_hub
