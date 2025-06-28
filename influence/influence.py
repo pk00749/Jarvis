@@ -6,7 +6,7 @@ class Influence:
         pass
 
     @staticmethod
-    def audio_to_text(file_path):
+    def voice_to_text(file_path):
         model_dir = "iic/SenseVoiceSmall"
 
         model = AutoModel(
@@ -32,3 +32,6 @@ class Influence:
         text = rich_transcription_postprocess(res[0]["text"])
         print(text)
         return text
+
+    def llm(self):
+        pass

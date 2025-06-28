@@ -7,9 +7,15 @@ def listener(audio):
         if audio is None:
             return "No voice to be recorded."
         filename = Listen.save_voice(audio)
-        return Influence.audio_to_text(filename) #"./tests/yue.mp3"
+        return Influence.voice_to_text(filename) #"./tests/yue.mp3"
     except Exception as e:
         return f"Fail to record voice: {e}"
+
+def influencer(text):
+    return Influence.llm(text)
+
+def brain():
+    pass
 
 def ui_launch():
     with gr.Blocks() as ui:
@@ -25,6 +31,11 @@ def ui_launch():
             gr.Textbox(
                 label="Jarvis"
             )
+
+        # with gr.Row():
+        #     gr.Textbox(
+        #         label="Jarvis"
+        #     )
     ui.launch()
 
 
