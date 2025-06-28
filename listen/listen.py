@@ -1,6 +1,8 @@
 import os
 import pyaudio
 import wave
+from datetime import datetime
+import soundfile as sf
 
 
 class Listen:
@@ -54,5 +56,18 @@ class Listen:
         print(f"Audio saved as {WAVE_OUTPUT_FILENAME}.")
         return WAVE_OUTPUT_FILENAME
 
-    def voice_to_text(self):
-        pass
+    @staticmethod
+    def save_voice(audio):
+        # Create recordings directory if it doesn't exist
+        os.makedirs("recordings", exist_ok=True)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"recordings/recording_{timestamp}.mp3"  # waw
+
+        # Save the audio file
+        sample_rate, audio_data = audio
+        sf.write(filename, audio_data, sample_rate)
+
+        print(f"Voice saved as {filename}")
+        return filename # "./tests/yue.mp3"

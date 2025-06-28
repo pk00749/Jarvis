@@ -1,38 +1,21 @@
 import gradio as gr
-import soundfile as sf
-import os
-from datetime import datetime
 from influence.influence import Influence
+from listen.listen import Listen
 
-
-def save_audio(audio):
-    if audio is None:
-        return "No audio recorded"
-
+def listener(audio):
     try:
-        # Create recordings directory if it doesn't exist
-        os.makedirs("recordings", exist_ok=True)
-
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"recordings/recording_{timestamp}.mp3" #waw
-
-        # Save the audio file
-        sample_rate, audio_data = audio
-        sf.write(filename, audio_data, sample_rate)
-
-        print(f"Audio saved to {filename}")
+        if audio is None:
+            return "No voice to be recorded."
+        filename = Listen.save_voice(audio)
         return Influence.audio_to_text(filename) #"./tests/yue.mp3"
     except Exception as e:
-        print(f"Error saving audio: {e}")
-        return f"Error: {str(e)}"
-
+        return f"Fail to record voice: {e}"
 
 def ui_launch():
     with gr.Blocks() as ui:
         with gr.Row():
             gr.Interface(
-                fn=save_audio,
+                fn=listener,
                 inputs=gr.Audio(sources=["microphone"]),
                 outputs=gr.Textbox(label="Me"),
                 title="Jarvis👾",
