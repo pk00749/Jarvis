@@ -11,31 +11,25 @@ def listener(audio):
     except Exception as e:
         return f"Fail to record voice: {e}"
 
-def influencer(text):
-    return Influence.llm(text)
+def influencer(prompt):
+    return Influence.llm(prompt)
 
-def brain():
-    pass
+def brain(audio):
+    prompt_text = listener(audio)
+    answer_text = influencer(prompt_text)
+    return prompt_text, answer_text
 
 def ui_launch():
     with gr.Blocks() as ui:
-        with gr.Row():
-            gr.Interface(
-                fn=listener,
-                inputs=gr.Audio(sources=["microphone"]),
-                outputs=gr.Textbox(label="Me"),
-                title="Jarvis👾",
-                description=""
-            )
-        with gr.Row():
-            gr.Textbox(
-                label="Jarvis"
-            )
-
-        # with gr.Row():
-        #     gr.Textbox(
-        #         label="Jarvis"
-        #     )
+        output_me = gr.Textbox(label="You")
+        output_jarvis = gr.Textbox(label="Jarvis")
+        gr.Interface(
+            fn=brain,
+            inputs=gr.Audio(sources=["microphone"]),
+            outputs=[output_me, output_jarvis],
+            title="Jarvis👾",
+            description=""
+        )
     ui.launch()
 
 
