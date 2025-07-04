@@ -12,10 +12,9 @@ def listener(audio):
     except Exception as e:
         return f"Fail to record voice: {e}"
 
-def speaker(filename):
-    Speak.text_to_voice()
-    print(filename)
-    return "./tests/record_output.wav"
+def speaker(text):
+    Speak.text_to_voice(text)
+    return "./tests/jarvis_0.wav"
 
 def influencer(prompt):
     return Influence.llm(prompt)

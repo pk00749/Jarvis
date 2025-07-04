@@ -6,3 +6,5 @@ torchaudio
 modelscope
 huggingface
 huggingface_hub
+pyaudio==0.2.14
+gradio==4.44.1
