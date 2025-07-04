@@ -13,8 +13,7 @@ def listener(audio):
         return f"Fail to record voice: {e}"
 
 def speaker(text):
-    Speak.text_to_voice(text)
-    return "./tests/jarvis_0.wav"
+    return Speak.text_to_voice(text)
 
 def influencer(prompt):
     return Influence.llm(prompt)
