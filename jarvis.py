@@ -1,7 +1,18 @@
 import gradio as gr
+import os, sys
+import numpy as np
 from influence.influence import Influence
 from listen.listen import Listen
 from speak.speak import Speak
+from cosyvoice.cli.cosyvoice import CosyVoice2
+from cosyvoice.utils.file_utils import load_wav
+from snownlp import SnowNLP
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+print(ROOT_DIR)
+sys.path.append(f'{ROOT_DIR}/third_party/AcademiCodec')
+sys.path.append(f'{ROOT_DIR}/third_party/Matcha-TTS')
+cosyvoice = CosyVoice2(f'{ROOT_DIR}/pretrained_models/CosyVoice2-0.5B', load_jit=False, load_trt=False, fp16=False)
 
 def listener(audio):
     try:
@@ -12,34 +23,69 @@ def listener(audio):
     except Exception as e:
         return f"Fail to record voice: {e}"
 
-def speaker(text):
-    return Speak.text_to_voice(text)
-
 def influencer(prompt):
     return Influence.llm(prompt)
 
 def brain(audio):
     prompt_text = listener(audio)
     answer_text = influencer(prompt_text)
-    return prompt_text, answer_text
+    speak = Speak()
+    return speak.text_to_voice_stream(answer_text)
+    # return prompt_text, answer_text
+
+def nlp_generator(text):
+    result = SnowNLP(text)
+    print(result.sentences)
+    return result.sentences
+
+def string_to_generator(text):
+    length = 12
+    if length <= 0:
+        print("Length should be greater than zero")
+    else:
+       return (char for char in text[:length])
+
+def test_brain(audio):
+    prompt_text = listener(audio)
+    answer_text = influencer(prompt_text)
+    text_result = nlp_generator(answer_text)
+    text_generator = string_to_generator(text_result)
+    print("Streaming...")
+    prompt_speech_16k = load_wav(f'{ROOT_DIR}/asset/zero_shot_prompt.wav', 16000)
+    # instruct usage
+    for i, j in enumerate(cosyvoice.inference_instruct2(
+            tts_text=text_generator, instruct_text='用粤语说这句话', prompt_speech_16k=prompt_speech_16k,
+            stream=True)):
+        audio_chunk = j['tts_speech'].cpu().numpy()
+        audio_chunk = np.asarray(audio_chunk, dtype=np.float32)
+        audio_chunk = np.nan_to_num(audio_chunk)  # Replace NaN/Inf with 0
+        audio_chunk = np.clip(audio_chunk, -1.0, 1.0)
+        print("audio_chunk dtype:", audio_chunk.dtype)
+        print("audio_chunk min:", np.min(audio_chunk))
+        print("audio_chunk max:", np.max(audio_chunk))
+        print("audio_chunk shape:", audio_chunk.shape)
+        if audio_chunk.ndim > 1:
+            audio_chunk = audio_chunk.flatten()  # Make it 1D
+        yield (16000, audio_chunk)
 
 def ui_launch():
     with gr.Blocks() as ui:
-        with gr.Row():
-            with gr.Column():
-                output_me = gr.Textbox(label="You")
-                output_jarvis_text = gr.Textbox(label="Jarvis")
-                gr.Interface(
-                    fn=brain,
-                    inputs=gr.Audio(sources=["microphone"]),
-                    outputs=[output_me, output_jarvis_text],
-                    title="Jarvis👾",
-                    description=""
-                )
-            with gr.Column():
-                output_jarvis_text.change(fn=speaker,
-                                          inputs=output_jarvis_text,
-                                          outputs=gr.Audio(sources=["microphone"], autoplay=True))
+        # output_me = gr.Textbox(label="You")
+        # output_jarvis_text = gr.Textbox(label="Jarvis")
+        # output_jarvis_audio = gr.Audio(sources=["microphone"], autoplay=True)
+
+        # output_jarvis_text.change(fn=Speak.text_to_voice_stream,
+        #                           inputs=[output_jarvis_text],
+        #                           outputs=[output_jarvis_audio])
+        gr.Interface(
+            fn=test_brain,
+            inputs=gr.Audio(sources=["microphone"]),
+            outputs=gr.Audio(sources=["microphone"], autoplay=True),
+            title="Jarvis👾",
+            description=""
+        )
+
+
     ui.launch()
 
 

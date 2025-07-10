@@ -18,7 +18,6 @@ class Listen:
         RATE = 16000  # 采样率（Hz）
         RECORD_SECONDS = 5  # 录制时长（秒）
         WAVE_OUTPUT_FILENAME = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tmp_record/output.wav")  # 输出文件名
-        print(WAVE_OUTPUT_FILENAME)
 
         # 初始化PyAudio
         p = pyaudio.PyAudio()

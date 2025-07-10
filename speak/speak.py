@@ -1,7 +1,10 @@
 import sys, os
 import torchaudio
+from typing import Generator
 from cosyvoice.cli.cosyvoice import CosyVoice2
 from cosyvoice.utils.file_utils import load_wav
+from snownlp import SnowNLP
+
 
 # set environment variable
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,15 +18,46 @@ class Speak:
         pass
 
     @staticmethod
-    def text_to_voice(text):
+    def _string_to_generator(text):
+        length = 12
+        if length <= 0:
+            print("Length should be greater than zero")
+        else:
+           return (char for char in text[:length])
+
+    @staticmethod
+    def nlp_generator(text):
+        result = SnowNLP(text)
+        print(result.sentences)
+        return result.sentences
+
+    def text_to_voice_file(self, text):
+        text_generator = self._string_to_generator(text)
+        print("Save as file.")
         prompt_speech_16k = load_wav(f'{ROOT_DIR}/asset/zero_shot_prompt.wav', 16000)
         # instruct usage
         voice_file_list = []
-        for i, j in enumerate(cosyvoice.inference_instruct2(
-                tts_text=text, instruct_text='用粤语说这句话', prompt_speech_16k=prompt_speech_16k, stream=False)):
-            print(f'{i}:{j}')
-            voice_file = f'{ROOT_DIR}/tests/jarvis_{i}.wav'
-            voice_file_list.append(voice_file)
-            torchaudio.save(voice_file, j['tts_speech'], cosyvoice.sample_rate)
-        print("Success to generate voice.")
-        return voice_file_list[0]
+
+        if isinstance(text_generator, Generator):
+            for i, j in enumerate(cosyvoice.inference_instruct2(
+                    tts_text=text_generator, instruct_text='用粤语说这句话', prompt_speech_16k=prompt_speech_16k, stream=True)):
+                print(f'{i}:{j}')
+                voice_file = f'{ROOT_DIR}/tests/jarvis_{i}.wav'
+                voice_file_list.append(voice_file)
+                torchaudio.save(voice_file, j['tts_speech'], cosyvoice.sample_rate)
+            print("Success to generate voice.")
+            return voice_file_list[0]
+
+    def text_to_voice_stream(self, text):
+        print(f'text: {text}')
+        text_result = self.nlp_generator(text)
+        text_generator = self._string_to_generator(text)
+        print("Streaming...")
+        prompt_speech_16k = load_wav(f'{ROOT_DIR}/asset/zero_shot_prompt.wav', 16000)
+        # instruct usage
+        if isinstance(text_generator, Generator):
+            for i, j in enumerate(cosyvoice.inference_instruct2(
+                    tts_text=text_generator, instruct_text='用粤语说这句话', prompt_speech_16k=prompt_speech_16k, stream=True)):
+                print(f'{i}:{j}')
+                audio_chunk = j['tts_speech'].cpu().numpy()
+                yield (16000, audio_chunk)
