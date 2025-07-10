@@ -9,7 +9,7 @@ from cosyvoice.utils.file_utils import load_wav
 from snownlp import SnowNLP
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-print(ROOT_DIR)
+print(f'Root path: {ROOT_DIR}')
 sys.path.append(f'{ROOT_DIR}/third_party/AcademiCodec')
 sys.path.append(f'{ROOT_DIR}/third_party/Matcha-TTS')
 cosyvoice = CosyVoice2(f'{ROOT_DIR}/pretrained_models/CosyVoice2-0.5B', load_jit=False, load_trt=False, fp16=False)
@@ -38,18 +38,16 @@ def nlp_generator(text):
     print(result.sentences)
     return result.sentences
 
-def string_to_generator(text):
-    length = 12
-    if length <= 0:
-        print("Length should be greater than zero")
-    else:
-       return (char for char in text[:length])
+def list_to_generator(texts):
+    if len(texts) > 0:
+        for text in texts:
+            yield text
 
 def test_brain(audio):
     prompt_text = listener(audio)
     answer_text = influencer(prompt_text)
-    text_result = nlp_generator(answer_text)
-    text_generator = string_to_generator(text_result)
+    answer_text_list = nlp_generator(answer_text)
+    text_generator = list_to_generator(answer_text_list)
     print("Streaming...")
     prompt_speech_16k = load_wav(f'{ROOT_DIR}/asset/zero_shot_prompt.wav', 16000)
     # instruct usage
@@ -72,7 +70,7 @@ def ui_launch():
     with gr.Blocks() as ui:
         # output_me = gr.Textbox(label="You")
         # output_jarvis_text = gr.Textbox(label="Jarvis")
-        # output_jarvis_audio = gr.Audio(sources=["microphone"], autoplay=True)
+        output_jarvis_audio = gr.Audio(sources=["microphone"], autoplay=True)
 
         # output_jarvis_text.change(fn=Speak.text_to_voice_stream,
         #                           inputs=[output_jarvis_text],
@@ -80,7 +78,7 @@ def ui_launch():
         gr.Interface(
             fn=test_brain,
             inputs=gr.Audio(sources=["microphone"]),
-            outputs=gr.Audio(sources=["microphone"], autoplay=True),
+            outputs=[output_jarvis_audio],
             title="Jarvis👾",
             description=""
         )

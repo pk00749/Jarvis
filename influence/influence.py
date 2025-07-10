@@ -20,8 +20,6 @@ class Influence:
             disable_update=True
         )
 
-        print(model.model_path)
-
         res = model.generate(
             input=file_path,
             cache={},
@@ -32,7 +30,7 @@ class Influence:
             merge_length_s=15,
         )
         text = rich_transcription_postprocess(res[0]["text"])
-        print(text)
+        print(f'Me: {text}')
         return text
 
     @staticmethod
@@ -47,5 +45,4 @@ class Influence:
 
         # 生成文本
         text = generate(model, tokenizer, prompt=prompt, verbose=True)
-        print(text)
         return text
