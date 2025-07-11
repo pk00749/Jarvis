@@ -60,4 +60,4 @@ class Speak:
                     tts_text=text_generator, instruct_text='用粤语说这句话', prompt_speech_16k=prompt_speech_16k, stream=True)):
                 print(f'{i}:{j}')
                 audio_chunk = j['tts_speech'].cpu().numpy()
-                yield (16000, audio_chunk)
+                yield (24000, audio_chunk)

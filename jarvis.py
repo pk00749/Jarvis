@@ -43,7 +43,7 @@ def list_to_generator(texts):
         for text in texts:
             yield text
 
-def test_brain(audio):
+def brain_streaming(audio):
     prompt_text = listener(audio)
     answer_text = influencer(prompt_text)
     answer_text_list = nlp_generator(answer_text)
@@ -58,7 +58,6 @@ def test_brain(audio):
         audio_chunk = np.asarray(audio_chunk, dtype=np.float32)
         audio_chunk = np.nan_to_num(audio_chunk)  # Replace NaN/Inf with 0
         audio_chunk = np.clip(audio_chunk, -1.0, 1.0)
-        print("audio_chunk dtype:", audio_chunk.dtype)
         print("audio_chunk min:", np.min(audio_chunk))
         print("audio_chunk max:", np.max(audio_chunk))
         print("audio_chunk shape:", audio_chunk.shape)
@@ -76,7 +75,7 @@ def ui_launch():
         #                           inputs=[output_jarvis_text],
         #                           outputs=[output_jarvis_audio])
         gr.Interface(
-            fn=test_brain,
+            fn=brain_streaming,
             inputs=gr.Audio(sources=["microphone"]),
             outputs=[output_jarvis_audio],
             title="Jarvis👾",
