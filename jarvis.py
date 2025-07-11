@@ -19,35 +19,27 @@ def listener(audio):
         if audio is None:
             return "No voice to be recorded."
         filename = Listen.save_voice(audio)
-        return Influence.voice_to_text(filename) #"./tests/yue.mp3"
+        return Influence.voice_to_text(filename)
     except Exception as e:
         return f"Fail to record voice: {e}"
 
-def influencer(prompt):
-    return Influence.llm(prompt)
-
-def brain(audio):
-    prompt_text = listener(audio)
-    answer_text = influencer(prompt_text)
-    speak = Speak()
-    return speak.text_to_voice_stream(answer_text)
-    # return prompt_text, answer_text
-
-def nlp_generator(text):
+def _nlp_generator(text):
     result = SnowNLP(text)
+    print("Proceed by NLP.")
     print(result.sentences)
     return result.sentences
 
-def list_to_generator(texts):
+def _list_to_generator(texts):
     if len(texts) > 0:
         for text in texts:
+            print(text)
             yield text
 
 def brain_streaming(audio):
     prompt_text = listener(audio)
-    answer_text = influencer(prompt_text)
-    answer_text_list = nlp_generator(answer_text)
-    text_generator = list_to_generator(answer_text_list)
+    answer_text = Influence.llm(prompt_text)
+    answer_text_list = _nlp_generator(answer_text)
+    text_generator = _list_to_generator(answer_text_list)
     print("Streaming...")
     prompt_speech_16k = load_wav(f'{ROOT_DIR}/asset/zero_shot_prompt.wav', 16000)
     # instruct usage
