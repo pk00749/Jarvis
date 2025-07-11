@@ -64,7 +64,7 @@ def test_brain(audio):
         print("audio_chunk shape:", audio_chunk.shape)
         if audio_chunk.ndim > 1:
             audio_chunk = audio_chunk.flatten()  # Make it 1D
-        yield (16000, audio_chunk)
+        yield (24000, audio_chunk)
 
 def ui_launch():
     with gr.Blocks() as ui:
