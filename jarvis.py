@@ -24,12 +24,17 @@ def listener(audio):
         return f"Fail to record voice: {e}"
 
 def _nlp_generator(text):
+    print("Split answer text by NLP...")
     result = SnowNLP(text)
-    print("Proceed by NLP.")
     print(result.sentences)
     return result.sentences
 
 def _list_to_generator(texts):
+    print("Convert List to Generator...")
+    texts = ["你好",
+             "在这两天的美股市场中",
+             "最亮眼的无疑就是英伟达和CEO黄仁勋",
+             "随着英伟达市值周四突破4万亿美元大关、黄仁勋继续按计划减持公司股票"]
     if len(texts) > 0:
         for text in texts:
             print(text)
@@ -50,9 +55,9 @@ def brain_streaming(audio):
         audio_chunk = np.asarray(audio_chunk, dtype=np.float32)
         audio_chunk = np.nan_to_num(audio_chunk)  # Replace NaN/Inf with 0
         audio_chunk = np.clip(audio_chunk, -1.0, 1.0)
-        print("audio_chunk min:", np.min(audio_chunk))
-        print("audio_chunk max:", np.max(audio_chunk))
-        print("audio_chunk shape:", audio_chunk.shape)
+        # print("audio_chunk min:", np.min(audio_chunk))
+        # print("audio_chunk max:", np.max(audio_chunk))
+        # print("audio_chunk shape:", audio_chunk.shape)
         if audio_chunk.ndim > 1:
             audio_chunk = audio_chunk.flatten()  # Make it 1D
         yield (24000, audio_chunk)
