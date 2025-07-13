@@ -232,7 +232,8 @@ class JarvisApp:
                 outputs=[output_audio],
                 title="Jarvis👾",
                 description="Talk with Jarvis, your AI assistant.",
-                concurrency_limit=1
+                concurrency_limit=1,
+                analytics_enabled=False
             )
 
         ui.launch(
