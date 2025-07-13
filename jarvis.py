@@ -7,7 +7,6 @@ import numpy as np
 from dataclasses import dataclass
 from influence.influence import Influence
 from listen.listen import Listen
-from speak.speak import Speak
 from cosyvoice.cli.cosyvoice import CosyVoice2
 from cosyvoice.utils.file_utils import load_wav
 from snownlp import SnowNLP
@@ -222,13 +221,14 @@ class JarvisApp:
                 elem_id="output_audio",
                 show_label=True
             )
+            input_audio = gr.Audio(
+                sources=["microphone"],
+                label="Me"
+            )
 
             interface = gr.Interface(
                 fn=self.process_audio_stream,
-                inputs=gr.Audio(
-                    sources=["microphone"],
-                    label="Me"
-                ),
+                inputs=[input_audio],
                 outputs=[output_audio],
                 title="Jarvis👾",
                 description="Talk with Jarvis, your AI assistant.",
