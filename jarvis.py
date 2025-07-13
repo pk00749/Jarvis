@@ -26,7 +26,7 @@ class Config:
     BUFFER_SIZE: int = 12000  # 减小到 500ms 以加快响应
     CHUNK_SIZE: int = 6000    # 减小到 250ms
     OVERLAP_SIZE: int = 1200  # 50ms 的重叠长度
-    MAX_CHUNKS_IN_MEMORY: int = 4
+    MAX_CHUNKS_IN_MEMORY: int = 2
     MAX_TEXT_LENGTH: int = 50  # 限制单次处理的文本长度
 
     def __post_init__(self):
