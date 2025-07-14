@@ -6,8 +6,8 @@ MEMORY_CONFIG = {
     'max_threads': 2,              # 限制线程数
     'batch_size': 1,              # 最小批处理大小
     'max_chunks_in_memory': 4,    # 内存中最大音频块数量
-    'enable_fp16': True,          # 启用半精度
-    'enable_jit': True,           # 启用 JIT
+    'enable_fp16': False,          # 启用半精度
+    'enable_jit': False,           # 启用 JIT
     'use_cpu': True               # 强制使用 CPU (Mac上更稳定)
 }
 

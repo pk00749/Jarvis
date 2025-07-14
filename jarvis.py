@@ -284,6 +284,7 @@ class JarvisApp:
                 return
 
             answer_text = Influence.llm(prompt_text)
+            answer_text = "对唔嗨住，请话我知你遇到咩问题，我帮你解决好唔好？"
             text_chunks = Config.split_text(answer_text)
 
             # 重置流处理器
