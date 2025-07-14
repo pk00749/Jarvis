@@ -7,7 +7,7 @@ from cosyvoice.utils.file_utils import load_wav
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(f'{ROOT_DIR}/third_party/AcademiCodec')
 sys.path.append(f'{ROOT_DIR}/third_party/Matcha-TTS')
-cosyvoice = CosyVoice2('pretrained_models/CosyVoice2-0.5B', load_jit=False, load_trt=False, fp16=False)
+cosyvoice = CosyVoice2('../pretrained_models/CosyVoice2-0.5B', load_jit=False, load_trt=False, fp16=False)
 
 prompt_speech_16k = load_wav('./asset/zero_shot_prompt.wav', 16000)
 
