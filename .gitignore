@@ -1,7 +1,6 @@
 .venv/
 *.wav
 .idea/
-.vscode/
 pretrained_models/
 resource.zip
 resource/
