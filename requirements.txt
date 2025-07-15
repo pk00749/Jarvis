@@ -1,19 +1,55 @@
-pytest==8.3.4
-pydantic==2.10.6
-funasr==1.2.6
-torch<=2.3
-torchaudio
-modelscope
-huggingface_hub==0.33.4
-pyaudio==0.2.14
-Matcha-TTS==0.0.7.2
-soundfile==0.12.1
-mlx_lm==0.26.0
-HyperPyYAML==1.2.2
-snownlp==0.12.3
-inflect==7.3.1
-openai-whisper==20231117
-onnxruntime==1.18.0; sys_platform == 'darwin' or sys_platform == 'windows'
-pyarrow==20.0.0
-pyworld==0.3.4
-gradio==4.44.1
+# 核心依赖
+gradio>=4.0.0
+numpy>=1.24.0
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# 语音识别依赖
+funasr>=1.0.0
+soundfile>=0.12.0
+librosa>=0.10.0
+
+# 大语言模型依赖 (MLX for Apple Silicon)
+mlx>=0.0.1
+mlx-lm>=0.0.1
+
+# 音频处理依赖
+pyaudio>=0.2.11
+wave
+pydub>=0.25.0
+scipy>=1.10.0  # 用于音频重采样和滤波处理
+
+# 文本处理依赖
+snownlp>=0.12.0
+jieba>=0.42.0
+
+# 工具依赖
+pyyaml>=6.0
+requests>=2.28.0
+tqdm>=4.64.0
+packaging>=21.0
+
+# 系统依赖
+psutil>=5.9.0
+multiprocessing-logging>=0.3.0
+
+# 开发和测试依赖
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=22.0.0
+flake8>=5.0.0
+
+# 可选依赖（用于性能优化）
+accelerate>=0.20.0
+transformers>=4.30.0
+datasets>=2.12.0
+
+# Mac OS 特定依赖
+# ���意：确保已安装 Xcode Command Line Tools
+# brew install portaudio ffmpeg
+
+# 使用说明：
+# 1. 安装 Homebrew: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# 2. 安装系统依赖: brew install portaudio ffmpeg
+# 3. 安装 Python 依赖: pip install -r requirements.txt
+# 4. 如果使用 conda: conda install pytorch torchaudio -c pytorch

@@ -10,7 +10,7 @@ from influence.influence import Influence
 from listen.listen import Listen
 from cosyvoice.cli.cosyvoice import CosyVoice2
 from cosyvoice.utils.file_utils import load_wav
-from snownlp import SnowNLP
+import threading
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -18,52 +18,81 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Config:
-    """配置类"""
+    """配置类 - 针对Mac M3优化"""
     ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__))
     SAMPLE_RATE: int = 24000
     PROMPT_WAV_PATH: str = 'asset/zero_shot_prompt.wav'
     COSYVOICE_MODEL_PATH: str = 'pretrained_models/CosyVoice2-0.5B'
-    BUFFER_SIZE: int = 12000  # 减小到 500ms 以加快响应
-    CHUNK_SIZE: int = 6000    # 减小到 250ms
-    OVERLAP_SIZE: int = 1200  # 50ms 的重叠长度
+    BUFFER_SIZE: int = 12000  # 500ms 缓冲，适合M3处理速度
+    CHUNK_SIZE: int = 6000    # 250ms 块大小
+    OVERLAP_SIZE: int = 1200  # 50ms 重叠
     MAX_CHUNKS_IN_MEMORY: int = 2
-    MAX_TEXT_LENGTH: int = 50  # 限制单次处理的文本长度
+    MAX_TEXT_LENGTH: int = 50
+    RECORDINGS_DIR: str = 'recordings'
 
     def __post_init__(self):
-        """确保音频参数合理"""
-        import os
-        # 设置环境变量以优化 NumPy 和 PyTorch 性能
-        os.environ['MKL_NUM_THREADS'] = '2'
-        os.environ['NUMEXPR_NUM_THREADS'] = '2'
-        os.environ['OMP_NUM_THREADS'] = '2'
-        os.environ['OPENBLAS_NUM_THREADS'] = '2'
+        """优化Mac M3性能配置"""
+        # 为Apple Silicon优化线程配置
+        os.environ['MKL_NUM_THREADS'] = '4'  # M3可以支持更多线程
+        os.environ['NUMEXPR_NUM_THREADS'] = '4'
+        os.environ['OMP_NUM_THREADS'] = '4'
+        os.environ['OPENBLAS_NUM_THREADS'] = '4'
+
+        # 创建录音目录
+        recordings_path = os.path.join(self.ROOT_DIR, self.RECORDINGS_DIR)
+        os.makedirs(recordings_path, exist_ok=True)
 
     @staticmethod
     def split_text(text: str) -> List[str]:
-        """优化的文本分割"""
-        # 使用更智能的分句规则
+        """智能文本分割，支持中文和粤语"""
         import re
 
-        # 移除多余的空白字符
+        # 确保输入是字符串类型
+        if not isinstance(text, str):
+            text = str(text)
+
+        # 清理文本
         text = ' '.join(text.split())
 
-        # 根据标点符号分割，但保持短句
-        sentences = []
-        for sentence in re.split(r'([。！？!?])', text):
-            if not sentence.strip():
-                continue
-            # 如果句子太长，按逗号分割
-            if len(sentence) > Config.MAX_TEXT_LENGTH:
-                for subsentence in re.split(r'([,，、])', sentence):
-                    if subsentence.strip():
-                        sentences.append(subsentence.strip())
-            else:
-                sentences.append(sentence.strip())
+        if not text.strip():
+            return [""]
 
-        return sentences
+        # 按句号、感叹号、问号分割
+        sentences = []
+        split_parts = re.split(r'([。！？!?])', text)
+
+        for i, part in enumerate(split_parts):
+            # 确保part是字符串并且不为空
+            if isinstance(part, str) and part.strip():
+                # 如果是标点符号，与前一个句子合并
+                if part in '。！？!?' and sentences:
+                    sentences[-1] += part
+                else:
+                    # 长句按逗号分割
+                    if len(part) > Config.MAX_TEXT_LENGTH:
+                        sub_parts = re.split(r'([,，、])', part)
+                        for j, sub_part in enumerate(sub_parts):
+                            if isinstance(sub_part, str) and sub_part.strip():
+                                if sub_part in ',，、' and sentences:
+                                    sentences[-1] += sub_part
+                                else:
+                                    sentences.append(sub_part.strip())
+                    else:
+                        sentences.append(part.strip())
+
+        # 过滤掉空字符串和无效内容
+        valid_sentences = []
+        for sentence in sentences:
+            if isinstance(sentence, str) and sentence.strip() and len(sentence.strip()) > 0:
+                # 确保句子不只是标点符号
+                clean_sentence = sentence.strip()
+                if not re.match(r'^[。！？!?，、,]+$', clean_sentence):
+                    valid_sentences.append(clean_sentence)
+
+        return valid_sentences if valid_sentences else [""]
 
 class AudioBuffer:
-    """改进的音频缓冲器类，用于平滑处理音频流"""
+    """音频缓冲器，优化流式处理"""
     def __init__(self, buffer_size: int, overlap_size: int):
         self.buffer_size = buffer_size
         self.overlap_size = overlap_size
@@ -72,129 +101,26 @@ class AudioBuffer:
         self.fade_out = np.linspace(1, 0, overlap_size)
 
     def process(self, chunk: np.ndarray) -> Optional[np.ndarray]:
-        """处理音频块，返回处理后的数据"""
-        # 确保chunk是一维数组
+        """处理音频块"""
         if chunk.ndim > 1:
             chunk = chunk.flatten()
 
-        # 将新的chunk添加到缓冲区
         self.buffer = np.concatenate([self.buffer, chunk])
 
-        # 如果缓冲区数据不够，返回None
         if len(self.buffer) < self.buffer_size:
             return None
 
-        # 准备输出数据
         output = self.buffer[:self.buffer_size]
 
-        # 应用交叉淡入淡出
+        # 应用淡入淡出效果
         if len(output) >= self.overlap_size:
             output[:self.overlap_size] *= self.fade_in
 
-        # 保留重叠部分
         self.buffer = self.buffer[self.buffer_size - self.overlap_size:]
         if len(self.buffer) >= self.overlap_size:
             self.buffer[:self.overlap_size] *= self.fade_out
 
         return output
-
-class AudioProcessor:
-    def __init__(self, sample_rate: int, chunk_size: int):
-        self.sample_rate = sample_rate
-        self.chunk_size = chunk_size
-        self.audio_buffer = []
-        self.total_length = 0
-
-    def add_chunk(self, chunk: np.ndarray) -> None:
-        """添加音频块到缓冲区"""
-        if chunk.ndim > 1:
-            chunk = chunk.flatten()
-        self.audio_buffer.append(chunk)
-        self.total_length += len(chunk)
-
-    def get_audio(self) -> Optional[np.ndarray]:
-        """获取处理后的完整音频"""
-        if not self.audio_buffer:
-            return None
-
-        # 合并所有音频块
-        audio = np.concatenate(self.audio_buffer)
-
-        # 应用淡入淡出效果
-        fade_length = min(2048, len(audio) // 10)
-        fade_in = np.linspace(0, 1, fade_length)
-        fade_out = np.linspace(1, 0, fade_length)
-
-        audio[:fade_length] *= fade_in
-        audio[-fade_length:] *= fade_out
-
-        # 重置缓冲区
-        self.audio_buffer = []
-        self.total_length = 0
-
-        return audio
-
-class AudioStreamProcessor:
-    """优化的音频流处理器，用于实时处理音频数据"""
-    def __init__(self, sample_rate: int, chunk_size: int, max_chunks: int):
-        self.sample_rate = sample_rate
-        self.chunk_size = chunk_size
-        self.max_chunks = max_chunks
-        self.chunks = []
-        self.total_samples = 0
-        self.fade_in = np.linspace(0, 1, 1024)
-        self.fade_out = np.linspace(1, 0, 1024)
-
-    def add_chunk(self, chunk: np.ndarray) -> Optional[np.ndarray]:
-        """添加并处理音频块，如果达到处理条件则返回处理后的数据"""
-        if chunk.ndim > 1:
-            chunk = chunk.flatten()
-
-        # 应用实时音频处理
-        chunk = self._process_chunk(chunk)
-
-        self.chunks.append(chunk)
-        self.total_samples += len(chunk)
-
-        # 当累积的块数达到最大限制时进行处理
-        if len(self.chunks) >= self.max_chunks:
-            return self._process_and_clear()
-        return None
-
-    def _process_chunk(self, chunk: np.ndarray) -> np.ndarray:
-        """实时处理单个音频块"""
-        chunk = np.asarray(chunk, dtype=np.float32)
-        chunk = np.nan_to_num(chunk)
-        chunk = np.clip(chunk, -1.0, 1.0)
-
-        # 应用简单的音频归一化
-        if chunk.max() > 1e-6:
-            chunk = chunk / np.abs(chunk).max() * 0.95
-
-        return chunk
-
-    def _process_and_clear(self) -> Optional[np.ndarray]:
-        """处理并清理缓存的音频块"""
-        if not self.chunks:
-            return None
-
-        # 合并音频块
-        audio = np.concatenate(self.chunks)
-
-        # 应用淡入淡出
-        if len(audio) >= 2048:
-            audio[:1024] *= self.fade_in
-            audio[-1024:] *= self.fade_out
-
-        # 清理内存
-        self.chunks = []
-        self.total_samples = 0
-
-        return audio
-
-    def flush(self) -> Optional[np.ndarray]:
-        """处理并返回所有剩余的音频数据"""
-        return self._process_and_clear()
 
 class JarvisApp:
     def __init__(self):
@@ -203,7 +129,8 @@ class JarvisApp:
         self.cosyvoice = self._init_cosyvoice()
         self.prompt_speech = self._load_prompt_speech()
         self.audio_buffer = AudioBuffer(self.config.BUFFER_SIZE, self.config.OVERLAP_SIZE)
-        self.audio_processor = AudioProcessor(self.config.SAMPLE_RATE, self.config.CHUNK_SIZE)
+        self.is_processing = False
+        self.processing_lock = threading.Lock()
 
     def _init_paths(self) -> None:
         """初始化路径"""
@@ -212,26 +139,26 @@ class JarvisApp:
         sys.path.append(f'{self.config.ROOT_DIR}/third_party/Matcha-TTS')
 
     def _init_cosyvoice(self) -> CosyVoice2:
-        """初始化CosyVoice模型，优化性能配置"""
+        """初始化CosyVoice��型，针对Mac M3优化"""
         import torch
 
-        # 设置较低的线程数以避免过度并行
-        torch.set_num_threads(2)
+        # Mac M3优化配置
+        torch.set_num_threads(4)  # M3可以支持更多线程
 
-        # 主动清理 GPU 缓存
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        # 如果有MPS（Metal Performance Shaders）支持，使用它
+        if torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+
+        logger.info(f"Using device: {device}")
 
         model = CosyVoice2(
             f'{self.config.ROOT_DIR}/{self.config.COSYVOICE_MODEL_PATH}',
-            load_jit=True,  # 使用 JIT 编译优化性能
+            load_jit=True,
             load_trt=False,
-            fp16=True,      # 使用半精度减少内存占用
+            fp16=True,
         )
-
-        # 设置较小的批处理大小
-        if hasattr(model, 'batch_size'):
-            model.batch_size = 1
 
         return model
 
@@ -242,143 +169,274 @@ class JarvisApp:
             16000
         )
 
-    @staticmethod
-    def process_audio(audio: Optional[np.ndarray]) -> str:
+    def process_audio(self, audio: Optional[np.ndarray]) -> str:
         """处理输入音频"""
         try:
             if audio is None:
-                return "No voice to be recorded."
+                return "没有录制到语音"
+
+            # 处理Gradio音频数据格式
+            if isinstance(audio, tuple):
+                # 如果是元组格式 (sample_rate, audio_data)
+                sample_rate, audio_data = audio
+                audio = audio_data
+
+            # 保存音频文件
             filename = Listen.save_voice(audio)
-            return Influence.voice_to_text(filename)
+
+            # 语音转文字
+            text = Influence.voice_to_text(filename)
+            logger.info(f"识别到的文本: {text}")
+
+            return text
+
         except Exception as e:
-            logger.error(f"Error processing audio: {e}")
-            return f"Failed to record voice: {e}"
+            logger.error(f"处理音频时出错: {e}")
+            return f"处理失败: {e}"
 
-    @staticmethod
-    def split_text(text: str) -> List[str]:
-        """使用NLP分割文本"""
+    def generate_response(self, prompt_text: str) -> str:
+        """生成回应"""
         try:
-            result = SnowNLP(text)
-            logger.info(f"Split sentences: {result.sentences}")
-            return result.sentences
+            # 使用大语言模型生成回应
+            response = Influence.llm(prompt_text)
+            logger.info(f"生成的回应: {response}")
+            return response
+
         except Exception as e:
-            logger.error(f"Error splitting text: {e}")
-            return [text]
+            logger.error(f"生成回应时出�����: {e}")
+            return "抱歉，我现在无法处理您的请求。"
 
-    @staticmethod
-    def text_generator(texts: List[str]) -> Generator[str, None, None]:
-        """文本生成器"""
-        for text in texts:
-            logger.info(f"Processing text: {text}")
-            yield text
-
-    def process_audio_stream(self,
-                           audio: Optional[np.ndarray]) -> Generator[Tuple[int, np.ndarray], None, None]:
-        """优化的音频流处理"""
-        if not audio:
-            return
-
+    def text_to_speech_stream(self, text: str) -> Generator[Tuple[int, np.ndarray], None, None]:
+        """文本转语音流 - 优化粤语语音合成"""
         try:
-            prompt_text = self.process_audio(audio)
-            if not prompt_text or prompt_text == "No voice to be recorded.":
+            # 确保text是字符串类型
+            if not isinstance(text, str):
+                text = str(text)
+
+            # 如果文本为空，返回静默
+            if not text.strip():
+                yield (self.config.SAMPLE_RATE, np.zeros(1000))
                 return
 
-            answer_text = Influence.llm(prompt_text)
-            answer_text = "对唔嗨住，请话我知你遇到咩问题，我帮你解决好唔好？"
-            text_chunks = Config.split_text(answer_text)
+            # 获取文本块
+            raw_text_chunks = Config.split_text(text)
 
-            # 重置流处理器
-            self.stream_processor = AudioStreamProcessor(
-                self.config.SAMPLE_RATE,
-                self.config.CHUNK_SIZE,
-                self.config.MAX_CHUNKS_IN_MEMORY
-            )
+            # 彻底清理text_chunks，确保每个元素都是有效字符串
+            text_chunks = []
+            for chunk in raw_text_chunks:
+                # 确保chunk是字符串类型
+                if isinstance(chunk, str):
+                    cleaned_chunk = chunk.strip()
+                    if cleaned_chunk:  # 不为空
+                        text_chunks.append(cleaned_chunk)
+                elif chunk is not None:  # 如果不是字符串但不为None，转换为字符串
+                    str_chunk = str(chunk).strip()
+                    if str_chunk:
+                        text_chunks.append(str_chunk)
 
-            # 使用上下文管理器禁用梯度计算
+            # 如果没���有效的文本块，返回静默
+            if not text_chunks:
+                logger.warning("没有有效的文本块可以合成语音")
+                yield (self.config.SAMPLE_RATE, np.zeros(1000))
+                return
+
+            logger.info(f"处理粤语文本块: {text_chunks}")
+
+            # 再次验证所有文本块都是字符串
+            def generate_valid_chunks():
+                """生成器：产生有效的文本块"""
+                for i, chunk in enumerate(text_chunks):
+                    if isinstance(chunk, str) and chunk.strip():
+                        yield chunk.strip()
+                    else:
+                        logger.warning(f"跳过无效文本块 {i}: {chunk} (类型: {type(chunk)})")
+
+            # 创建生成器
+            valid_chunks = generate_valid_chunks()
+
+            # ���查是否有有效文本块（需要先转换为列表来检查）
+            valid_chunks_list = list(valid_chunks)
+            if not valid_chunks_list:
+                logger.warning("所有文本块都无效")
+                yield (self.config.SAMPLE_RATE, np.zeros(1000))
+                return
+
+            logger.info(f"最终有效文本块: {valid_chunks_list}")
+
+            # 重新创建生成器用于语音合成
+            def text_generator():
+                """为语音合成创建文��生成器"""
+                for chunk in valid_chunks_list:
+                    yield chunk
+
             with torch.inference_mode():
+                # 使用粤语语调进行语音合成
                 for chunk in self.cosyvoice.inference_instruct2(
-                    tts_text=self.text_generator(text_chunks),
-                    instruct_text='用粤语说这句话',
+                    tts_text=text_generator(),
+                    instruct_text='用粤语语调自然地说出这句话，要有粤语的韵味和语气',
                     prompt_speech_16k=self.prompt_speech,
                     stream=True
                 ):
                     audio_data = chunk['tts_speech'].cpu().numpy()
-                    processed_audio = self.stream_processor.add_chunk(audio_data)
+                    processed_audio = self.audio_buffer.process(audio_data)
+
                     if processed_audio is not None:
                         yield (self.config.SAMPLE_RATE, processed_audio)
 
-                    # 及时清理临时变量
+                    # 清理内存
                     del audio_data
-                    if hasattr(torch, 'cuda') and torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-
-                # 处理剩余音频
-                final_audio = self.stream_processor.flush()
-                if final_audio is not None:
-                    yield (self.config.SAMPLE_RATE, final_audio)
 
         except Exception as e:
-            logger.error(f"Error in audio stream processing: {e}")
-            yield (self.config.SAMPLE_RATE, np.zeros(1))
+            logger.error(f"粤语语音合成出错: {e}")
+            logger.error(f"输入文本: {text}")
+            logger.error(f"文本类型: {type(text)}")
+            import traceback
+            logger.error(f"错误堆栈: {traceback.format_exc()}")
+            # 生成静默音频作为错误处理
+            yield (self.config.SAMPLE_RATE, np.zeros(1000))
+
+    def process_conversation(self, audio: Optional[np.ndarray]) -> Generator[Tuple[int, np.ndarray], None, None]:
+        """处理完整对话流程"""
+        with self.processing_lock:
+            if self.is_processing:
+                yield (self.config.SAMPLE_RATE, np.zeros(1000))
+                return
+
+            self.is_processing = True
+
+        try:
+            # 1. 语音转文字
+            if audio is None:
+                yield (self.config.SAMPLE_RATE, np.zeros(1000))
+                return
+
+            prompt_text = self.process_audio(audio)
+            if not prompt_text or prompt_text == "没有录制到语音":
+                yield (self.config.SAMPLE_RATE, np.zeros(1000))
+                return
+
+            # 2. 生成回应
+            response_text = self.generate_response(prompt_text)
+
+            # 3. 文本转语音流
+            for audio_chunk in self.text_to_speech_stream(response_text):
+                yield audio_chunk
+
+        except Exception as e:
+            logger.error(f"对话处理出错: {e}")
+            yield (self.config.SAMPLE_RATE, np.zeros(1000))
         finally:
-            # 确保清理内存
-            if hasattr(torch, 'cuda') and torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-    @staticmethod
-    def _process_audio_chunk(chunk: np.ndarray) -> np.ndarray:
-        """处理音频块"""
-        chunk = np.asarray(chunk, dtype=np.float32)
-        chunk = np.nan_to_num(chunk)
-
-        # 应用音频增强
-        chunk = np.clip(chunk, -1.0, 1.0)
-        if chunk.max() > 1e-6:
-            chunk = chunk / np.abs(chunk).max() * 0.95
-
-        # 应用简单的降噪
-        noise_threshold = 0.01
-        chunk[np.abs(chunk) < noise_threshold] = 0
-
-        return chunk.flatten() if chunk.ndim > 1 else chunk
+            self.is_processing = False
 
     def create_ui(self) -> None:
-        """Create Gradio UI"""
-        with gr.Blocks() as ui:
-            output_audio = gr.Audio(
-                label="Jarvis",
-                sources=["microphone"],
-                autoplay=True,
-                streaming=True,
-                elem_id="output_audio",
-                show_label=True
-            )
-            input_audio = gr.Audio(
-                sources=["microphone"],
-                label="Me"
+        """创建优化的Gradio界面"""
+        with gr.Blocks(
+            title="Jarvis AI Assistant",
+            theme=gr.themes.Soft(),
+            css="""
+            .gradio-container {
+                max-width: 800px !important;
+                margin: auto !important;
+            }
+            .audio-container {
+                margin: 20px 0;
+            }
+            """
+        ) as demo:
+
+            gr.Markdown(
+                """
+                # 🤖 Jarvis AI Assistant (粤语版)
+                
+                **使用方法:**
+                1. 点击"录音"按钮开始录音
+                2. 用任何语言说出您的问题或指令
+                3. 停止录音后，Jarvis会自动用**粤语**回应
+                4. 回应将以粤语语音形式播放
+                
+                **核心特性:**
+                - 🎤 多语言语音识别 (iic/SenseVoiceSmall)
+                - 🧠 智能对话生成 (DeepSeek-Coder-V2-Lite)
+                - 🔊 粤语语音合成 (CosyVoice2-0.5B)
+                - 🌟 **无论您用什么语言提问，Jarvis都会用粤语回答**
+                
+                **支持输入**: 中文、英文、粤语等多种语言
+                **输出语言**: 100% 粤语回答
+                """,
+                elem_id="header"
             )
 
-            interface = gr.Interface(
-                fn=self.process_audio_stream,
+            with gr.Row():
+                with gr.Column():
+                    gr.Markdown("### 🎤 您的语音输入")
+                    input_audio = gr.Audio(
+                        sources=["microphone"],
+                        # type="numpy",
+                        label="点击录音",
+                        elem_classes=["audio-container"]
+                    )
+
+                with gr.Column():
+                    gr.Markdown("### 🔊 Jarvis的回应")
+                    output_audio = gr.Audio(
+                        label="Jarvis回应",
+                        autoplay=True,
+                        streaming=True,
+                        elem_classes=["audio-container"]
+                    )
+
+            with gr.Row():
+                process_btn = gr.Button("🚀 开始对话", variant="primary", size="lg")
+                clear_btn = gr.Button("🗑️ 清除", variant="secondary")
+
+            # 状���指示器
+            status = gr.Textbox(
+                label="状态",
+                value="准备就绪",
+                interactive=False,
+                elem_id="status"
+            )
+
+            # 事件处理
+            process_btn.click(
+                fn=self.process_conversation,
                 inputs=[input_audio],
                 outputs=[output_audio],
-                title="Jarvis👾",
-                description="Talk with Jarvis, your AI assistant.",
-                concurrency_limit=1,
-                analytics_enabled=False
+                show_progress="minimal"
             )
 
-        ui.launch(
+            clear_btn.click(
+                fn=lambda: (None, None, "已清除"),
+                outputs=[input_audio, output_audio, status]
+            )
+
+            # 自动处理
+            input_audio.change(
+                fn=self.process_conversation,
+                inputs=[input_audio],
+                outputs=[output_audio]
+            )
+
+        # 启动界面
+        demo.launch(
             share=False,
             debug=True,
             server_port=7860,
             server_name="0.0.0.0",
-            max_threads=4  # 限制最大工作线程数
+            max_threads=8,  # M3可以支持更多线程
+            inbrowser=True,
+            show_error=True
         )
 
 def main():
-    app = JarvisApp()
-    app.create_ui()
+    """主函数"""
+    try:
+        logger.info("启动 Jarvis AI Assistant...")
+        app = JarvisApp()
+        app.create_ui()
+    except Exception as e:
+        logger.error(f"启动失败: {e}")
+        raise
 
 if __name__ == "__main__":
     main()

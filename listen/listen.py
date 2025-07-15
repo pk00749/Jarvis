@@ -62,11 +62,11 @@ class Listen:
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"recordings/recording_{timestamp}.mp3"  # waw
+        filename = f"recordings/recording_{timestamp}.wav"  # waw
 
         # Save the audio file
         sample_rate, audio_data = audio
         sf.write(filename, audio_data, sample_rate)
 
         print(f"Voice saved as {filename}")
-        return filename # "./tests/yue.mp3"
+        return filename
