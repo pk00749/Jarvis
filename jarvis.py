@@ -27,24 +27,15 @@ def _nlp_generator(text):
     print("Split answer text by NLP...")
     result = SnowNLP(text)
     print(result.sentences)
-    return result.sentences
+    for sen in result.sentences:
+        print(sen)
+        yield sen
 
-def _list_to_generator(texts):
-    print("Convert List to Generator...")
-    texts = ["你好",
-             "在这两天的美股市场中",
-             "最亮眼的无疑就是英伟达和CEO黄仁勋",
-             "随着英伟达市值周四突破4万亿美元大关、黄仁勋继续按计划减持公司股票"]
-    if len(texts) > 0:
-        for text in texts:
-            print(text)
-            yield text
 
 def brain_streaming(audio):
     prompt_text = listener(audio)
     answer_text = Influence.llm(prompt_text)
-    answer_text_list = _nlp_generator(answer_text)
-    text_generator = _list_to_generator(answer_text_list)
+    text_generator = _nlp_generator(answer_text)
     print("Streaming...")
     prompt_speech_16k = load_wav(f'{ROOT_DIR}/asset/zero_shot_prompt.wav', 16000)
     # instruct usage

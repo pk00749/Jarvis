@@ -1,3 +1,4 @@
+import os
 from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from mlx_lm import load, generate
@@ -13,7 +14,7 @@ class Influence:
         model = AutoModel(
             model=model_dir,
             trust_remote_code=True,
-            remote_code="./model.py",
+            remote_code=f"{os.path.dirname(os.path.abspath(__file__))}/model.py",
             vad_model="fsmn-vad",
             vad_kwargs={"max_single_segment_time": 30000},
             device="cuda:0",
