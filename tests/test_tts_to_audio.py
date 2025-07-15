@@ -7,7 +7,7 @@ class TestTTSToAudio:
             "Content-Type": "application/json"
         }
         data = {
-            "text": "恭喜发财，生意兴隆，身体健康，大吉大利",
+            "text": "呢几个字都表达唔到，我想讲嘅意思。恭喜发财，生意兴隆，身体健康，大吉大利",
             "speaker": "粤语女"
         }
         response = requests.post(url="http://localhost:9880/tts_to_audio", headers=header, json=data)

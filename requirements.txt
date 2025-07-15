@@ -1,1 +1,19 @@
 pytest==8.3.4
+pydantic==2.10.6
+funasr==1.2.6
+torch<=2.3
+torchaudio
+modelscope
+huggingface_hub==0.33.4
+pyaudio==0.2.14
+Matcha-TTS==0.0.7.2
+soundfile==0.12.1
+mlx_lm==0.26.0
+HyperPyYAML==1.2.2
+snownlp==0.12.3
+inflect==7.3.1
+openai-whisper==20231117
+onnxruntime==1.18.0; sys_platform == 'darwin' or sys_platform == 'windows'
+pyarrow==20.0.0
+pyworld==0.3.4
+gradio==4.44.1
