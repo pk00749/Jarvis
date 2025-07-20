@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-07-19T10:38:55.394644",
+  "tests_completed": [
+    "llm_cantonese",
+    "speech_recognition",
+    "speech_synthesis",
+    "end_to_end"
+  ],
+  "tests_passed": [
+    "llm_cantonese",
+    "speech_recognition"
+  ],
+  "tests_failed": [
+    "speech_synthesis",
+    "end_to_end"
+  ],
+  "performance_metrics": {
+    "avg_llm_time": 7.840767860412598,
+    "avg_recognition_time": 4.28264045715332
+  }
+}

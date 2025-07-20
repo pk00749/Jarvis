@@ -193,9 +193,23 @@ class CosyVoiceFrontEnd:
         return model_input
 
     def frontend_instruct2(self, tts_text, instruct_text, prompt_speech_16k, resample_rate):
-        model_input = self.frontend_zero_shot(tts_text, instruct_text + '<|endofprompt|>', prompt_speech_16k, resample_rate)
+        # 修复：分离指令文本和合成文本，避免指令被合成到语音中
+        # 原始实现问题：instruct_text被直接拼接到prompt_text中，导致"用粤语"被合成
+        # 新实现：使用空的prompt_text，确保指令不被合成到语音中
+
+        # 获取基本的zero-shot处理结果，使用空的prompt_text
+        model_input = self.frontend_zero_shot(tts_text, '', prompt_speech_16k, resample_rate)
+
+        # 移除不需要的llm相关token（保持与原始行为一致）
         del model_input['llm_prompt_speech_token']
         del model_input['llm_prompt_speech_token_len']
+
+        # 保持原有的prompt_text结构，但使用特殊标记而不是实际的指令文本
+        # 这样可以保持模型输入格式的兼容性
+        instruct_token, instruct_token_len = self._extract_text_token('<|endofprompt|>')
+        model_input['prompt_text'] = instruct_token
+        model_input['prompt_text_len'] = instruct_token_len
+
         return model_input
 
     def frontend_vc(self, source_speech_16k, prompt_speech_16k, resample_rate):
