@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import time
+import gc
 from tqdm import tqdm
 from hyperpyyaml import load_hyperpyyaml
 from modelscope import snapshot_download
@@ -54,19 +55,31 @@ class CosyVoice2:
 
     def inference_instruct2(self, tts_text, instruct_text, prompt_speech_16k, stream=False, speed=1.0, text_frontend=True):
         assert isinstance(self.model, CosyVoice2Model), 'inference_instruct2 is only implemented for CosyVoice2!'
-        for i in tqdm(self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend)):
+
+        # MacBook Air M3 优化: 预处理阶段内存管理
+        text_chunks = list(self.frontend.text_normalize(tts_text, split=True, text_frontend=text_frontend))
+        total_chunks = len(text_chunks)
+
+        for chunk_idx, i in enumerate(tqdm(text_chunks)):
+            # MacBook Air M3 优化: 智能内存管理 - 每处理几个chunk清理一次
+            if chunk_idx > 0 and chunk_idx % 2 == 0:
+                gc.collect()
+
             model_input = self.frontend.frontend_instruct2(i, instruct_text, prompt_speech_16k, self.sample_rate)
             start_time = time.time()
             logging.info('synthesis text {}'.format(i))
-            print(f'synthesis text {i}')
+
+            # MacBook Air M3 优化: 流式处理优化
             for model_output in self.model.tts(**model_input, stream=stream, speed=speed):
                 speech_len = model_output['tts_speech'].shape[1] / self.sample_rate
-                print(f"tts_speech: {model_output['tts_speech']}")
                 print(f"after shaped: {model_output['tts_speech'].shape[1]}")
                 logging.info('yield speech len {}, rtf {}'.format(speech_len, (time.time() - start_time) / speech_len))
                 print(f'time_elapsed: {(time.time() - start_time)}, speech len: {speech_len}, RTF: {(time.time() - start_time)/ speech_len}')
                 yield model_output
                 start_time = time.time()
+
+            # MacBook Air M3 优化: 清理中间变量减少内存占用
+            del model_input
 
     def inference_zero_shot(self, tts_text, prompt_text, prompt_speech_16k, stream=False, speed=1.0, text_frontend=True):
         prompt_text = self.frontend.text_normalize(prompt_text, split=False, text_frontend=text_frontend)
