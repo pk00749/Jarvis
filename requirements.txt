@@ -17,3 +17,4 @@ onnxruntime==1.18.0; sys_platform == 'darwin' or sys_platform == 'windows'
 pyarrow==20.0.0
 pyworld==0.3.4
 gradio==4.44.1
+dashscope==1.24.1
