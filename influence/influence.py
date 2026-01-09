@@ -3,6 +3,7 @@ from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from mlx_lm import load, generate
 from dashscope import Generation
+import dashscope
 from http import HTTPStatus
 
 class Influence:
@@ -104,3 +105,36 @@ class Influence:
         for response in responses:
             if response.status_code == HTTPStatus.OK:
                 return response.output.choices[0]["message"]["content"]
+
+    @staticmethod
+    def voice_to_text_qwen3(file_path):
+        messages = [
+            {
+                "role": "system",
+                "content": [
+                    # Configure the context for customized recognition here.
+                    {"text": ""},
+                ]
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"audio": file_path},
+                ]
+            }
+        ]
+        response = dashscope.MultiModalConversation.call(
+            # If you have not configured the environment variable, replace the following line with your Model Studio API key: api_key = "sk-xxx",
+            api_key=os.getenv("DASHSCOPE_API_KEY"),
+            model="qwen3-asr-flash",
+            messages=messages,
+            result_format="message",
+            asr_options={
+                # "language": "zh", # Optional. If you know the language of the audio, you can specify it to improve recognition accuracy.
+                "enable_lid": True,
+                "enable_itn": False
+            }
+        )
+        print(f"User: {response['message']['content'][0]['text']}")
+        text = response['message']['content'][0]['text']
+        return text

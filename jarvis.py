@@ -106,7 +106,7 @@ def listener(audio):
         if audio is None:
             return "No voice to be recorded."
         filename = Listen.save_voice(audio)
-        return Influence.voice_to_text(filename)
+        return Influence.voice_to_text_qwen3(filename)
     except Exception as e:
         return f"Fail to record voice: {e}"
 
