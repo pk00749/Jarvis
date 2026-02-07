@@ -18,8 +18,6 @@ dtype = 'int16'  # data type
 format_pcm = 'pcm'  # the format of the audio data
 block_size = 3200  # number of frames per buffer
 
-text = None
-
 
 class RealTimeRecognizer:
     def __init__(self, text_queue: Optional[Queue] = None):
@@ -33,7 +31,7 @@ class RealTimeRecognizer:
         self.recognition.stop()
         print('Translation stopped.')
         print(
-            '[Metric] requestId: {}, first package delay ms: {}, last package delay ms: {}'
+            'RequestId: {}, first package delay ms: {}, last package delay ms: {}'
             .format(
                 self.recognition.get_last_request_id(),
                 self.recognition.get_first_package_delay(),
@@ -43,6 +41,7 @@ class RealTimeRecognizer:
         sys.exit(0)
 
     def run(self):
+        print("===================== Real-Time Speech Recognition =====================")
         print('Initializing ...')
 
         # Real-time speech recognition callback
@@ -52,7 +51,7 @@ class RealTimeRecognizer:
             def on_open(self) -> None:
                 global mic
                 global stream
-                print('RecognitionCallback open.')
+                print('Listening open.')
                 mic = pyaudio.PyAudio()
                 stream = mic.open(format=pyaudio.paInt16,
                                   channels=1,
@@ -62,7 +61,7 @@ class RealTimeRecognizer:
             def on_close(self) -> None:
                 global mic
                 global stream
-                print('RecognitionCallback close.')
+                print('Listening closed.')
                 stream.stop_stream()
                 stream.close()
                 mic.terminate()
@@ -70,11 +69,11 @@ class RealTimeRecognizer:
                 mic = None
 
             def on_complete(self) -> None:
-                print('RecognitionCallback completed.')  # translation completed
+                print('Listening completed.')  # translation completed
 
             def on_error(self, message) -> None:
-                print('RecognitionCallback task_id: ', message.request_id)
-                print('RecognitionCallback error: ', message.message)
+                print('Listening task_id: ', message.request_id)
+                print('Listening error: ', message.message)
                 # Stop and close the audio stream if it is running
                 if 'stream' in globals() and stream.active:
                     stream.stop()
@@ -86,9 +85,8 @@ class RealTimeRecognizer:
                 sentence = result.get_sentence()
                 if 'text' in sentence:
                     if RecognitionResult.is_sentence_end(sentence):
-                        print('RecognitionCallback text: ', sentence['text'])
-                        print(
-                            f'RecognitionCallback sentence end, request_id:{result.get_request_id()}, usage:{result.get_usage(sentence)}')
+                        print(f'The content heard: {sentence["text"]}')
+                        print(f'Listening request_id:{result.get_request_id()}, usage:{result.get_usage(sentence)}')
                         if outer.text_queue:
                             outer.text_queue.put(sentence['text'])
                         outer._should_stop = True

@@ -1,7 +1,7 @@
 """简单日志模块使用示例"""
 
 # 方式1：直接导入使用（推荐）
-from utils.simple_logger import log_info, log_error
+from app.utils.simple_logger import log_info, log_error
 
 
 # 在现有代码中任何位置添加日志，无需修改原有逻辑
@@ -31,7 +31,7 @@ def example_usage():
 
 
 # 方式2：获取专用logger
-from utils.simple_logger import SimpleLogger
+from app.utils.simple_logger import SimpleLogger
 
 def example_with_logger():
     """使用专用logger的示例"""
@@ -53,7 +53,7 @@ class ExampleDetector:
 
     def __init__(self):
         # 只需添加这一行
-        from utils.simple_logger import SimpleLogger
+        from app.utils.simple_logger import SimpleLogger
         self.logger = SimpleLogger.get_logger("wake_word")
 
     def detect(self, text):
