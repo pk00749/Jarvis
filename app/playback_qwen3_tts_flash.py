@@ -7,6 +7,9 @@ from dashscope.audio.qwen_tts_realtime import *
 from qwen_agent.agents import Assistant
 from app.tools.mcp_wrapper import AmapMapsTool, EdgeOneTool
 from app.tools.custom_tools import WeatherTool, TimeTool
+from app.tools.calculator import CalculatorTool
+from app.tools.joke import JokeTool
+from app.tools.translate import TranslateTool
 from dashscope import Generation
 from B64PCMPlayer import B64PCMPlayer
 
@@ -139,6 +142,9 @@ class SynthesizeSpeechFromLlm:
             EdgeOneTool(),
             WeatherTool(),
             TimeTool(),
+            CalculatorTool(),
+            JokeTool(),
+            TranslateTool(),
         ]
 
         bot = Assistant(
