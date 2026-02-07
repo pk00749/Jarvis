@@ -74,8 +74,3 @@ def log_debug(message: str, module: str = "jarvis"):
 
 # 快捷使用
 logger = SimpleLogger.get_logger()
-
-# 模块专用logger
-wake_word_logger = SimpleLogger.get_logger("wake_word")
-audio_logger = SimpleLogger.get_logger("audio")
-conversation_logger = SimpleLogger.get_logger("conversation")
