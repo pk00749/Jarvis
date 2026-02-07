@@ -1,4 +1,3 @@
-# For prerequisites running following sample, visit https://help.aliyun.com/zh/model-studio/getting-started/first-api-call-to-qwen
 import signal
 import sys
 import threading
@@ -8,15 +7,14 @@ from typing import Optional
 import pyaudio
 from dashscope.audio.asr import *
 
-sample_rate = 16000
-format_pcm = 'pcm'
-
 
 class RealTimeRecognizer:
     def __init__(self, text_queue: Optional[Queue] = None):
         self.recognition = None
         self.text_queue = text_queue
         self._should_stop = False
+        self.mic = None
+        self.stream = None
 
     def signal_handler(self, sig, frame):
         print('Ctrl+C pressed, stop translation ...')
@@ -40,19 +38,24 @@ class RealTimeRecognizer:
                 self.outer = outer
 
             def on_open(self) -> None:
-                global mic, stream
                 print('Listening open.')
-                mic = pyaudio.PyAudio()
-                stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True)
+                self.outer.mic = pyaudio.PyAudio()
+                self.outer.stream = self.outer.mic.open(
+                    format=pyaudio.paInt16,
+                    channels=1,
+                    rate=16000,
+                    input=True
+                )
 
             def on_close(self) -> None:
-                global mic, stream
                 print('Listening closed.')
-                stream.stop_stream()
-                stream.close()
-                mic.terminate()
-                stream = None
-                mic = None
+                if self.outer.stream:
+                    self.outer.stream.stop_stream()
+                    self.outer.stream.close()
+                if self.outer.mic:
+                    self.outer.mic.terminate()
+                self.outer.stream = None
+                self.outer.mic = None
 
             def on_complete(self) -> None:
                 print('Listening completed.')
@@ -60,9 +63,9 @@ class RealTimeRecognizer:
             def on_error(self, message) -> None:
                 print('Listening task_id: ', message.request_id)
                 print('Listening error: ', message.message)
-                if 'stream' in globals() and stream.active:
-                    stream.stop()
-                    stream.close()
+                if self.outer.stream and hasattr(self.outer.stream, 'active') and self.outer.stream.active:
+                    self.outer.stream.stop()
+                    self.outer.stream.close()
                 sys.exit(1)
 
             def on_event(self, result: RecognitionResult) -> None:
@@ -78,8 +81,8 @@ class RealTimeRecognizer:
 
         self.recognition = Recognition(
             model='fun-asr-realtime',
-            format=format_pcm,
-            sample_rate=sample_rate,
+            format='pcm',
+            sample_rate=16000,
             semantic_punctuation_enabled=False,
             callback=callback)
 
@@ -92,12 +95,12 @@ class RealTimeRecognizer:
         while True:
             if self._should_stop:
                 break
-            if not stream:
+            if not self.stream:
                 break
-            if hasattr(stream, 'is_active') and not stream.is_active():
+            if hasattr(self.stream, 'is_active') and not self.stream.is_active():
                 break
             try:
-                data = stream.read(3200, exception_on_overflow=False)
+                data = self.stream.read(3200, exception_on_overflow=False)
             except Exception:
                 break
             if self._should_stop:
