@@ -26,7 +26,6 @@ voice = 'Kiki'
 pya = None
 b64_player: B64PCMPlayer = None
 qwen_tts_realtime: QwenTtsRealtime = None
-DO_VIDEO_TEST = False
 
 
 class MyCallback(QwenTtsRealtimeCallback):
