@@ -159,42 +159,6 @@ class MCPToolRegistry:
         return self.tools
 
 
-class AmapMapsTool(MCPToolBase):
-    description = '高德地图位置搜索，查找地点、地址、POI等信息'
-    parameters = [{
-        'name': 'query',
-        'type': 'string',
-        'description': '要搜索的地点、地址或POI名称，如"北京天安门"',
-        'required': True
-    }]
-    
-    def __init__(self, cfg: Optional[Dict] = None):
-        default_cfg = {
-            'endpoint_url': 'https://dashscope.aliyuncs.com/api/v1/mcps/amap-maps/sse'
-        }
-        if cfg:
-            default_cfg.update(cfg)
-        super().__init__(default_cfg)
-
-
-class EdgeOneTool(MCPToolBase):
-    description = 'EdgeOne页面内容获取和位置相关信息搜索'
-    parameters = [{
-        'name': 'query',
-        'type': 'string',
-        'description': '位置或页面查询内容',
-        'required': True
-    }]
-    
-    def __init__(self, cfg: Optional[Dict] = None):
-        default_cfg = {
-            'endpoint_url': 'https://dashscope.aliyuncs.com/api/v1/mcps/EdgeOne/sse'
-        }
-        if cfg:
-            default_cfg.update(cfg)
-        super().__init__(default_cfg)
-
-
 def get_all_mcp_tools() -> dict:
     """Get all registered MCP tools from the registry"""
     return mcp_tools_dict
