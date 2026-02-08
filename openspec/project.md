@@ -33,6 +33,7 @@ Key capabilities:
 ### Utilities
 - **logging**: Built-in Python logging with custom SimpleLogger wrapper
 - **threading**: Concurrent processing for audio pipeline (listen → process → speak)
+- **pyyaml**: YAML parsing for MCP tool configuration (app/tools/mcp_config.yaml)
 
 ## Project Conventions
 
@@ -77,18 +78,22 @@ Key classes:
 - `B64PCMPlayer`: Audio streaming and playback management
 
 #### MCP Tool Pattern
-All MCP tools follow this structure:
-```python
-@register_tool('tool_name')
-class ToolName(MCPToolBase):
-    description = 'Tool description in Chinese'
-    parameters = [{
-        'name': 'param_name',
-        'type': 'string',
-        'description': 'Parameter description',
-        'required': True/False
-    }]
+MCP tools are now configured via YAML (see `app/tools/mcp_config.yaml`):
+
+```yaml
+mcp_tools:
+  tool_name:
+    name: 'tool_name'
+    description: 'Tool description in Chinese'
+    endpoint_url: 'https://...'
+    parameters:
+      - name: 'param_name'
+        type: 'string'
+        description: 'Parameter description'
+        required: true
 ```
+
+Tools are automatically registered on module import. Legacy pattern (manual class creation) is still supported for backward compatibility.
 
 #### Callback Pattern
 All real-time components use callback-based architecture:
@@ -97,7 +102,8 @@ All real-time components use callback-based architecture:
 - Callbacks handle async events and manage audio streams
 
 #### Tool Registration Pattern
-- Use `@register_tool('name')` decorator for qwen-agent integration
+- MCP tools: Configuration-based via YAML in `app/tools/mcp_config.yaml`
+- Custom tools: Use `@register_tool('name')` decorator for qwen-agent integration
 - Tools extend `BaseTool` from `qwen_agent.tools.base`
 - MCP tools extend `MCPToolBase` for SSE connection handling
 - Custom tools implement `call()` method with parameters dict
