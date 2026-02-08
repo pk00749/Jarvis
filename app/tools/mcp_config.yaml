@@ -1,0 +1,20 @@
+mcp_tools:
+  amap_maps:
+    name: 'amap_maps'
+    description: '高德地图位置搜索，查找地点、地址、POI等信息'
+    endpoint_url: 'https://dashscope.aliyuncs.com/api/v1/mcps/amap-maps/sse'
+    parameters:
+      - name: 'query'
+        type: 'string'
+        description: '要搜索的地点、地址或POI名称，如"北京天安门"'
+        required: true
+
+  edgeone_search:
+    name: 'edgeone_search'
+    description: 'EdgeOne页面内容获取和位置相关信息搜索'
+    endpoint_url: 'https://dashscope.aliyuncs.com/api/v1/mcps/EdgeOne/sse'
+    parameters:
+      - name: 'query'
+        type: 'string'
+        description: '位置或页面查询内容'
+        required: true
