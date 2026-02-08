@@ -52,22 +52,4 @@ When the Assistant processes a query requiring an MCP tool
 Then the tool call shall succeed
 And the result shall be identical to the pre-refactor implementation
 
-## MODIFIED Requirements
 
-### Requirement: MCP tool initialization
-
-The MCPToolBase initialization SHALL support configuration-based endpoint URLs.
-
-#### Scenario: Initializing tool with config endpoint
-Given a tool configuration with `endpoint_url: https://example.com/mcp/sse`
-When the tool is instantiated
-Then the tool's `endpoint_url` attribute shall be set to the configured value
-
-#### Scenario: Initializing tool with custom config override
-Given a tool configuration with `endpoint_url: https://example.com/mcp/sse`
-When the tool is instantiated with `cfg={'endpoint_url': 'https://custom.com/mcp/sse'}`
-Then the tool's `endpoint_url` attribute shall be set to the custom override value
-
-## REMOVED Requirements
-
-None
